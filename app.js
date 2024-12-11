@@ -5,6 +5,14 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var cors = require('cors'); // Import CORS middleware
 
+require('dotenv').config();
+
+// Wire in our authentication module
+var passport = require('passport');
+require('./app_api/models/user'); // Register the users schema
+
+require('./app_api/config/passport');
+
 var indexRouter = require('./app_server/routes/index');
 var usersRouter = require('./app_server/routes/users');
 var travelRouter = require('./app_server/routes/travel');
@@ -28,12 +36,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(passport.initialize()); // Initialize passport
 
 // Enable CORS
 app.use(cors({
   origin: 'http://localhost:4200', // Allow requests from Angular frontend
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow specific HTTP methods
-  allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers
+  allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers including Authorization
 }));
 
 // Debugging logs
@@ -51,6 +60,15 @@ app.use('/travel', travelRouter); // Travel routes
 // Catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404));
+});
+
+// Catch unauthorized error and create 401
+app.use((err, req, res, next) => {
+  if (err.name === 'UnauthorizedError') {
+    res
+      .status(401)
+      .json({ "message": err.name + ": " + err.message });
+  }
 });
 
 // Error handler
